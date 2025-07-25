@@ -1,3 +1,4 @@
+// client/src/stores/authStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../lib/api';
@@ -13,6 +14,8 @@ interface User {
     resource: string;
     actions: string[];
   }>;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 interface AuthState {
@@ -42,7 +45,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true });
           
+          console.log('Attempting login with:', { email }); // Debug log
+          
           const response = await api.post('/auth/login', { email, password });
+          console.log('Login response:', response.data); // Debug log
+          
           const { user, tokens } = response.data.data;
 
           // Set authorization header
@@ -58,8 +65,9 @@ export const useAuthStore = create<AuthState>()(
 
           toast.success('Login successful!');
         } catch (error: any) {
+          console.error('Login error:', error); // Debug log
           set({ isLoading: false });
-          const message = error.response?.data?.message || 'Login failed';
+          const message = error.response?.data?.message || error.message || 'Login failed';
           toast.error(message);
           throw error;
         }
@@ -158,7 +166,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initializeAuth: () => {
-        const { token, refreshToken } = get();
+        const { token } = get();
         
         if (token) {
           // Set authorization header
@@ -174,8 +182,10 @@ export const useAuthStore = create<AuthState>()(
                 isLoading: false,
               });
             })
-            .catch(() => {
+            .catch((error) => {
+              console.error('Profile fetch failed:', error);
               // Token is invalid, try to refresh
+              const { refreshToken } = get();
               if (refreshToken) {
                 get().refreshAuth()
                   .then(() => {
@@ -195,7 +205,7 @@ export const useAuthStore = create<AuthState>()(
                     get().logout();
                   });
               } else {
-                get().logout();
+                set({ isLoading: false });
               }
             });
         } else {

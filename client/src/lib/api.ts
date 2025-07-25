@@ -1,6 +1,9 @@
+// client/src/lib/api.ts
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+console.log('API Base URL:', API_BASE_URL); // Debug log
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,7 +16,9 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Add timestamp to prevent caching
+    console.log('API Request:', config.method?.toUpperCase(), config.url); // Debug log
+    
+    // Add timestamp to prevent caching for GET requests
     if (config.method === 'get') {
       config.params = {
         ...config.params,
@@ -24,6 +29,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('API Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -31,12 +37,15 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    console.log('API Response:', response.status, response.config.url); // Debug log
     return response;
   },
   (error) => {
+    console.error('API Response Error:', error.response?.status, error.response?.data || error.message);
+    
     // Handle network errors
     if (!error.response) {
-      error.message = 'Network error. Please check your connection.';
+      error.message = 'Network error. Please check your connection and ensure the server is running.';
     }
     
     // Handle specific error codes

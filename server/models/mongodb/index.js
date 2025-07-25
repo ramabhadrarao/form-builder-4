@@ -1,3 +1,4 @@
+// server/models/mongodb/index.js
 import { Schema, model } from 'mongoose';
 
 // User Schema
@@ -49,9 +50,6 @@ userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
-
 // Application Schema
 const applicationSchema = new Schema({
   applicationId: {
@@ -97,9 +95,6 @@ const applicationSchema = new Schema({
 }, {
   timestamps: true
 });
-
-applicationSchema.index({ applicationId: 1 });
-applicationSchema.index({ createdBy: 1 });
 
 // Form Schema
 const formSchema = new Schema({
@@ -170,9 +165,6 @@ const formSchema = new Schema({
   timestamps: true
 });
 
-formSchema.index({ formId: 1, applicationId: 1 });
-formSchema.index({ applicationId: 1 });
-
 // Form Submission Schema
 const formSubmissionSchema = new Schema({
   formId: String,
@@ -209,10 +201,6 @@ const formSubmissionSchema = new Schema({
   timestamps: true
 });
 
-formSubmissionSchema.index({ formId: 1, applicationId: 1 });
-formSubmissionSchema.index({ submissionId: 1 });
-formSubmissionSchema.index({ submittedBy: 1 });
-
 // Report Schema
 const reportSchema = new Schema({
   reportId: String,
@@ -244,8 +232,6 @@ const reportSchema = new Schema({
 }, {
   timestamps: true
 });
-
-reportSchema.index({ reportId: 1, applicationId: 1 });
 
 // Workflow Schema
 const workflowSchema = new Schema({
@@ -282,8 +268,6 @@ const workflowSchema = new Schema({
   timestamps: true
 });
 
-workflowSchema.index({ workflowId: 1, applicationId: 1 });
-
 // Permission Schema
 const permissionSchema = new Schema({
   resource: String,
@@ -305,9 +289,6 @@ const permissionSchema = new Schema({
   timestamps: true
 });
 
-permissionSchema.index({ resource: 1, resourceId: 1 });
-permissionSchema.index({ user: 1 });
-
 // File Schema
 const fileSchema = new Schema({
   filename: String,
@@ -326,9 +307,6 @@ const fileSchema = new Schema({
 }, {
   timestamps: true
 });
-
-fileSchema.index({ applicationId: 1 });
-fileSchema.index({ uploadedBy: 1 });
 
 // Export models
 export const User = model('User', userSchema);
