@@ -1,7 +1,5 @@
 import express from 'express';
 import multer from 'multer';
-import { GridFSBucket } from 'mongodb';
-import { mongoConnection } from '../config/database.js';
 import {
   uploadFile,
   getFile,
@@ -21,7 +19,7 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = process.env.ALLOWED_FILE_TYPES?.split(',') || [
-      'jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'
+      'jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'
     ];
     
     const fileExtension = file.originalname.split('.').pop().toLowerCase();

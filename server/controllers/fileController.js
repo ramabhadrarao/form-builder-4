@@ -47,6 +47,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
             .toBuffer();
         }
 
+        // Upload to GridFS
         const uploadStream = bucket.openUploadStream(file.originalname, {
           metadata: {
             originalName: file.originalname,
