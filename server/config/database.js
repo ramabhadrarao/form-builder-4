@@ -6,16 +6,18 @@ let mongoConnection = null;
 let sequelizeConnection = null;
 
 // MongoDB Connection
+// Update server/config/database.js - MongoDB Connection function
 async function connectMongoDB() {
   try {
     const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/nocode_system';
     
     await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      // Remove these deprecated options:
+      // useNewUrlParser: true,
+      // useUnifiedTopology: true,
     });
 
     mongoConnection = mongoose.connection;

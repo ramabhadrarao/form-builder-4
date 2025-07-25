@@ -1,49 +1,77 @@
 import bcrypt from 'bcryptjs';
-import { connectDatabases } from '../config/database.js';
-import { createUser } from '../services/userService.js';
-import { createApplication } from '../services/applicationService.js';
-import { logger } from '../utils/logger.js';
+import mongoose from 'mongoose';
+import { User, Application } from '../models/mongodb/index.js';
+
+async function connectDB() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/nocode_system');
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    throw error;
+  }
+}
+
+async function createUser(userData) {
+  try {
+    const existingUser = await User.findOne({ email: userData.email });
+    if (existingUser) {
+      console.log(`ℹ️  User already exists: ${userData.email}`);
+      return existingUser;
+    }
+
+    const user = new User(userData);
+    await user.save();
+    console.log(`✅ User created: ${userData.email}`);
+    return user;
+  } catch (error) {
+    console.error(`❌ Error creating user ${userData.email}:`, error.message);
+    throw error;
+  }
+}
+
+async function createApplication(appData) {
+  try {
+    const existingApp = await Application.findOne({ applicationId: appData.applicationId });
+    if (existingApp) {
+      console.log(`ℹ️  Application already exists: ${appData.name}`);
+      return existingApp;
+    }
+
+    const app = new Application(appData);
+    await app.save();
+    console.log(`✅ Application created: ${appData.name}`);
+    return app;
+  } catch (error) {
+    console.error(`❌ Error creating application:`, error.message);
+    throw error;
+  }
+}
 
 async function seedDatabase() {
   try {
-    logger.info('Starting database seeding...');
+    console.log('🌱 Starting database seeding...');
     
-    // Connect to databases
-    await connectDatabases();
+    // Connect to database
+    await connectDB();
     
     // Create admin user
-    const adminPassword = await bcrypt.hash(
-      process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123', 
-      12
-    );
-    
+    const adminPassword = await bcrypt.hash('Admin@123', 12);
     const adminUser = await createUser({
-      email: process.env.DEFAULT_ADMIN_EMAIL || 'admin@system.com',
+      email: 'admin@system.com',
       password: adminPassword,
       firstName: 'System',
       lastName: 'Administrator',
       role: 'super_admin',
       isActive: true,
-      permissions: [
-        {
-          resource: '*',
-          actions: ['create', 'read', 'update', 'delete']
-        }
-      ]
-    }).catch(error => {
-      if (error.code === 11000 || error.name === 'SequelizeUniqueConstraintError') {
-        logger.info('Admin user already exists');
-        return null;
-      }
-      throw error;
+      permissions: [{
+        resource: '*',
+        actions: ['create', 'read', 'update', 'delete']
+      }]
     });
 
-    if (adminUser) {
-      logger.info('Admin user created successfully');
-    }
-
     // Create sample users
-    const sampleUsers = [
+    const users = [
       {
         email: 'manager@demo.com',
         password: await bcrypt.hash('Manager@123', 12),
@@ -52,22 +80,10 @@ async function seedDatabase() {
         role: 'manager',
         isActive: true,
         permissions: [
-          {
-            resource: 'applications',
-            actions: ['create', 'read', 'update']
-          },
-          {
-            resource: 'forms',
-            actions: ['create', 'read', 'update', 'delete']
-          },
-          {
-            resource: 'reports',
-            actions: ['create', 'read', 'update']
-          },
-          {
-            resource: 'workflows',
-            actions: ['create', 'read', 'update']
-          }
+          { resource: 'applications', actions: ['create', 'read', 'update'] },
+          { resource: 'forms', actions: ['create', 'read', 'update', 'delete'] },
+          { resource: 'reports', actions: ['create', 'read', 'update'] },
+          { resource: 'workflows', actions: ['create', 'read', 'update'] }
         ]
       },
       {
@@ -78,14 +94,8 @@ async function seedDatabase() {
         role: 'staff',
         isActive: true,
         permissions: [
-          {
-            resource: 'forms',
-            actions: ['read', 'create']
-          },
-          {
-            resource: 'reports',
-            actions: ['read']
-          }
+          { resource: 'forms', actions: ['read', 'create'] },
+          { resource: 'reports', actions: ['read'] }
         ]
       },
       {
@@ -96,34 +106,22 @@ async function seedDatabase() {
         role: 'user',
         isActive: true,
         permissions: [
-          {
-            resource: 'forms',
-            actions: ['read', 'create']
-          }
+          { resource: 'forms', actions: ['read', 'create'] }
         ]
       }
     ];
 
-    for (const userData of sampleUsers) {
-      try {
-        await createUser(userData);
-        logger.info(`Sample user created: ${userData.email}`);
-      } catch (error) {
-        if (error.code === 11000 || error.name === 'SequelizeUniqueConstraintError') {
-          logger.info(`Sample user already exists: ${userData.email}`);
-        } else {
-          logger.error(`Error creating sample user ${userData.email}:`, error);
-        }
-      }
+    for (const userData of users) {
+      await createUser(userData);
     }
 
     // Create sample application
     if (adminUser) {
-      const sampleApp = {
+      await createApplication({
         applicationId: 'demo-app-001',
         name: 'Demo Application',
         description: 'A sample application for demonstration purposes',
-        createdBy: adminUser.id || adminUser._id,
+        createdBy: adminUser._id,
         status: 'active',
         settings: {
           theme: 'default',
@@ -131,42 +129,41 @@ async function seedDatabase() {
           enableWorkflows: true,
           enableReports: true
         }
-      };
-
-      try {
-        await createApplication(sampleApp);
-        logger.info('Sample application created successfully');
-      } catch (error) {
-        if (error.code === 11000 || error.name === 'SequelizeUniqueConstraintError') {
-          logger.info('Sample application already exists');
-        } else {
-          logger.error('Error creating sample application:', error);
-        }
-      }
+      });
     }
 
-    logger.info('Database seeding completed successfully!');
+    console.log('\n🎉 Database seeding completed successfully!');
     
-    // Log credentials
-    logger.info('='.repeat(50));
-    logger.info('DEFAULT CREDENTIALS:');
-    logger.info('='.repeat(50));
-    logger.info(`Admin: ${process.env.DEFAULT_ADMIN_EMAIL || 'admin@system.com'} / ${process.env.DEFAULT_ADMIN_PASSWORD || 'Admin@123'}`);
-    logger.info('Manager: manager@demo.com / Manager@123');
-    logger.info('Staff: staff@demo.com / Staff@123');
-    logger.info('User: user@demo.com / User@123');
-    logger.info('='.repeat(50));
+    // Display credentials
+    console.log('\n' + '='.repeat(60));
+    console.log('🔑 DEFAULT LOGIN CREDENTIALS:');
+    console.log('='.repeat(60));
+    console.log('👑 Admin:   admin@system.com / Admin@123');
+    console.log('👨‍💼 Manager: manager@demo.com / Manager@123');
+    console.log('👷 Staff:   staff@demo.com / Staff@123');
+    console.log('👤 User:    user@demo.com / User@123');
+    console.log('='.repeat(60));
+    console.log('\n🚀 Next steps:');
+    console.log('1. Go to: http://localhost:5173');
+    console.log('2. Login with admin credentials above');
+    console.log('3. Start building your applications! 🎯\n');
     
-    process.exit(0);
   } catch (error) {
-    logger.error('Database seeding failed:', error);
-    process.exit(1);
+    console.error('❌ Database seeding failed:', error);
+    console.error('\nError details:', error.message);
+    console.log('\n🔧 Troubleshooting:');
+    console.log('1. Make sure MongoDB is running');
+    console.log('2. Check your database connection');
+    console.log('3. Ensure all dependencies are installed: npm install');
+  } finally {
+    // Close database connection
+    await mongoose.connection.close();
+    console.log('📋 Database connection closed');
+    process.exit(0);
   }
 }
 
-// Run seeder if called directly
+// Run seeder if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedDatabase();
 }
-
-export default seedDatabase;
